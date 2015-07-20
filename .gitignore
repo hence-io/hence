@@ -1,0 +1,10 @@
+.vagrant
+
+config/*
+!config/default.rb
+
+projects/*
+!projects/README.md
+
+mount/*
+!mount/README.md
