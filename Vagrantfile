@@ -1,7 +1,9 @@
 VAGRANTFILE_API_VERSION = "2"
-Vagrant.require_version ">=1.6"
+Vagrant.require_version ">=1.7.2"
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+
+    $provision_timestamp = Time.now.to_i
 
     # --------------------------------------------------
     # Box Config
@@ -30,6 +32,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     # Box Setup
     # --------------------------------------------------
     config.vm.box = $vm_box || "ubuntu/trusty64"
+    config.vm.box_version = $vm_box_version || "20150609.0.10"
 
     if $vm_box == "rancherio/rancheros"
         config.vm.box_version = ">=0.3.3"
@@ -67,6 +70,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
                 v.gui = $vm_gui || false
             end
 
+            node.vm.hostname = hostname
+
             ip = "#{$private_ip_subnet}.#{i+99}"
             node.vm.network "private_network", ip: ip
             node.ssh.forward_agent = true
@@ -81,7 +86,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
             # Forward the docker daemon tcp.  Defaults to 2375.  Set to false in custom.rb to disable
             if $expose_docker_tcp
-                node.vm.network "forwarded_port", guest: 2375, host: $expose_docker_tcp, auto_correct: true
+                node.vm.network "forwarded_port", guest: 2375, host: 2375, auto_correct: true
             end
 
             # Add any custom-configured exposed ports
@@ -108,28 +113,33 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             # --------------------------------------------------
             # Node Provisioning
             # --------------------------------------------------
-            config.vm.provision :shell, :inline => "mkdir -p /hence/data && chmod -R 775 /hence/data && chown -R vagrant:vagrant /hence/data", :privileged => true
+            config.vm.provision :shell, path: "./scripts/setup/configure-folder-permissions.sh", :privileged => true
+            config.vm.provision :shell, path: "./scripts/setup/configure-docker.sh", :privileged => true
+
+            $rancher_server_image = "rancher/server:latest"
+            $rancher_agent_image = "rancher/agent:latest"
 
             if is_base_host then
                 config.vm.provision "docker" do |d|
-                  d.run "rancher/server:latest",
-                    auto_assign_name: false,
-                    daemonize: true,
-                    restart: 'always',
-                    args: "-p 8080:8080 --name rancher-server"
+                    d.run $rancher_server_image,
+                        auto_assign_name: false,
+                        daemonize: true,
+                        restart: 'always',
+                        args: "-p 8080:8080 --name rancher-server"
                 end
             end
 
             config.vm.provision "docker" do |d|
-              d.run "rancher/agent:latest",
-                auto_assign_name: false,
-                daemonize: false,
-                restart: 'no',
-                args: "-e CATTLE_AGENT_IP=192.168.33.40 -e WAIT=true -v /var/run/docker.sock:/var/run/docker.sock --name rancher-agent-init",
-                cmd: "http://localhost:8080"
+                d.run $rancher_agent_image,
+                    auto_assign_name: false,
+                    daemonize: false,
+                    restart: 'no',
+                    args: "-e CATTLE_AGENT_IP=192.168.33.40 -e WAIT=true -v /var/run/docker.sock:/var/run/docker.sock --name rancher-agent-init",
+                    cmd: "http://localhost:8080"
             end
 
-            config.vm.provision :shell, :inline => "docker logs -f rancher-agent-init", :privileged => true
+            config.vm.provision :shell, :inline => "docker logs -f --since #{$provision_timestamp} rancher-agent-init", :privileged => true
+            config.vm.provision :shell, :inline => "docker logs -f --since #{$provision_timestamp} rancher-agent", :privileged => true
         end
     end
 end
