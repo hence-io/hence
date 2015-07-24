@@ -121,12 +121,13 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             # Node Provisioning
             # --------------------------------------------------
 
-            # config.vm.provision :shell, path: "./scripts/setup/configure-folder-permissions.sh", :privileged => true
-            config.vm.provision :shell, path: "./scripts/setup/configure-docker.sh", :privileged => true
 
             # Temporary fix for broken Docker provisioning in vagrant < 1.7.4
             config.vm.provision :shell, :inline => "apt-get update -qqy", :privileged => true
             config.vm.provision "docker", :version => "1.7.1"
+
+            config.vm.provision :shell, path: "./scripts/setup/configure-folder-permissions.sh", :privileged => true
+            config.vm.provision :shell, path: "./scripts/setup/configure-docker.sh", :privileged => true
 
             $rancher_server_image = "rancher/server:latest"
             $rancher_agent_image = "rancher/agent:latest"
