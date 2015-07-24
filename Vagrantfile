@@ -4,6 +4,9 @@ Vagrant.require_version ">=1.7.2"
 unless Vagrant.has_plugin?("vagrant-bindfs")
   raise 'vagrant-bindfs is not installed!  Please run `vagrant plugin install vagrant-bindfs`'
 end
+unless Vagrant.has_plugin?("vagrant-vbguest")
+  raise 'vagrant-vbguest is not installed!  Please run `vagrant plugin install vagrant-vbguest`'
+end
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
@@ -123,11 +126,12 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
 
             # Temporary fix for broken Docker provisioning in vagrant < 1.7.4
+            config.vm.provision :shell, path: "./scripts/setup/configure-docker.sh", :privileged => true
+
             config.vm.provision :shell, :inline => "apt-get update -qqy", :privileged => true
             config.vm.provision "docker", :version => "1.7.1"
 
             config.vm.provision :shell, path: "./scripts/setup/configure-folder-permissions.sh", :privileged => true
-            config.vm.provision :shell, path: "./scripts/setup/configure-docker.sh", :privileged => true
 
             $rancher_server_image = "rancher/server:latest"
             $rancher_agent_image = "rancher/agent:latest"

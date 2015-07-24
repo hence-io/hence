@@ -29,8 +29,8 @@ To learn more about using Rancher, please refer to the [Rancher Documentation](h
     | tar xzf - -C /usr/local/bin --strip-components 2\
     && chmod +x /usr/local/bin/rancher-compose
 
-### Setting up Local Docker to version 1.7
+### Setting up Local Docker to version 1.7.1
 #### OSX
     rm /usr/local/bin/docker\
-    && curl -L https://get.docker.com/builds/Darwin/x86_64/docker-latest > /usr/local/bin/docker\
+    && curl -L https://get.docker.com/builds/Darwin/x86_64/docker-1.7.1 > /usr/local/bin/docker\
     && chmod +x /usr/local/bin/docker
