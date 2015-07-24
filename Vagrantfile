@@ -1,6 +1,10 @@
 VAGRANTFILE_API_VERSION = "2"
 Vagrant.require_version ">=1.7.2"
 
+unless Vagrant.has_plugin?("vagrant-bindfs")
+  raise 'vagrant-bindfs is not installed!  Please run `vagrant plugin install vagrant-bindfs`'
+end
+
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
     $provision_timestamp = Time.now.to_i
@@ -97,8 +101,11 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             # --------------------------------------------------
             # Folder Mounting
             # --------------------------------------------------
-            node.vm.synced_folder "./projects", "/hence/projects", type: "nfs", :nfs_version => "3", :mount_options => ["actimeo=2"]
-            node.vm.synced_folder "./mount", "/hence/mount", type: "rsync", rsync__exclude: ".git/", rsync__args: ["--verbose", "--archive", "--copy-links"]
+            node.vm.synced_folder "./projects", "/vagrant-nfs/projects", type: "nfs", :nfs_version => "3", :mount_options => ["actimeo=2"]
+            config.bindfs.bind_folder "/vagrant-nfs/projects", "/hence/projects"
+
+            node.vm.synced_folder "./mount", "/vagrant-nfs/mount", type: "nfs", :nfs_version => "3", :mount_options => ["actimeo=2"]
+            config.bindfs.bind_folder "/vagrant-nfs/mount", "/hence/mount"
 
             # Optionally, mount the User's home directory in the VM.  Defaults to false.
             if $share_home
@@ -113,11 +120,22 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             # --------------------------------------------------
             # Node Provisioning
             # --------------------------------------------------
-            config.vm.provision :shell, path: "./scripts/setup/configure-folder-permissions.sh", :privileged => true
+
+            # config.vm.provision :shell, path: "./scripts/setup/configure-folder-permissions.sh", :privileged => true
             config.vm.provision :shell, path: "./scripts/setup/configure-docker.sh", :privileged => true
+
+            # Temporary fix for broken Docker provisioning in vagrant < 1.7.4
+            config.vm.provision :shell, :inline => "apt-get update -qqy", :privileged => true
+            config.vm.provision "docker", :version => "1.7.1"
 
             $rancher_server_image = "rancher/server:latest"
             $rancher_agent_image = "rancher/agent:latest"
+
+            # Remove any crashed containers on provision
+            $container_cleanup_starting = 'echo "INFO: Cleaning up any failed containers"'
+            $container_cleanup_success = 'echo "INFO: Cleanup complete"'
+            $container_cleanup_script = "#{$container_cleanup_starting} && crashed=`docker ps -aq -f exited=1`; [ -z \"$crashed\" ] || docker rm -f $crashed; #{$container_cleanup_success}"
+            config.vm.provision :shell, :inline => $container_cleanup_script, :privileged => true
 
             if is_base_host then
                 config.vm.provision "docker" do |d|
