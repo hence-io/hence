@@ -8,3 +8,6 @@ projects/*
 
 mount/*
 !mount/README.md
+
+provisioning/*
+!provisioning/README.md
