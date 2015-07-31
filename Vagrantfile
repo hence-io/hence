@@ -61,6 +61,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     # Disable synching current directory
     config.vm.synced_folder "./", "/vagrant", disabled: true
 
+    server_ip = "#{$private_ip_prefix}.100"
+
     # Set up the nodes
     (1..$number_of_nodes).each do |i|
         is_base_host = (i == 1)
@@ -79,8 +81,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
             node.vm.hostname = hostname
 
-            ip = "#{$private_ip_subnet}.#{i+99}"
-            node.vm.network "private_network", ip: ip
+            node_ip = "#{$private_ip_prefix}.#{i+99}"
+            node.vm.network "private_network", ip: node_ip
             node.ssh.forward_agent = true
 
             # --------------------------------------------------
@@ -124,12 +126,17 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             # Node Provisioning
             # --------------------------------------------------
 
+            # Fix for tty warnings while provisioning ubuntu. See: http://foo-o-rama.com/vagrant--stdin-is-not-a-tty--fix.html
+            config.vm.provision "fix-no-tty", type: "shell" do |s|
+                s.privileged = false
+                s.inline = "sudo sed -i '/tty/!s/mesg n/tty -s \\&\\& mesg n/' /root/.profile"
+            end
 
-            # Temporary fix for broken Docker provisioning in vagrant < 1.7.4
-            config.vm.provision :shell, path: "./scripts/setup/configure-docker.sh", :privileged => true
+            config.vm.provision :shell, path: "./scripts/setup/prepare.sh", :privileged => true
 
-            config.vm.provision :shell, :inline => "apt-get update -qqy", :privileged => true
             config.vm.provision "docker", :version => "1.7.1"
+
+            config.vm.provision :shell, path: "./scripts/setup/configure-docker.sh", :privileged => true
 
             config.vm.provision :shell, path: "./scripts/setup/configure-folder-permissions.sh", :privileged => true
 
@@ -157,8 +164,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
                     auto_assign_name: false,
                     daemonize: false,
                     restart: 'no',
-                    args: "-e CATTLE_AGENT_IP=192.168.33.40 -e WAIT=true -v /var/run/docker.sock:/var/run/docker.sock --name rancher-agent-init",
-                    cmd: "http://localhost:8080"
+                    args: "-e CATTLE_AGENT_IP=#{node_ip} -e WAIT=true -v /var/run/docker.sock:/var/run/docker.sock --name rancher-agent-init",
+                    cmd: "http://#{server_ip}:8080"
             end
 
             config.vm.provision :shell, :inline => "docker logs -f --since #{$provision_timestamp} rancher-agent-init", :privileged => true

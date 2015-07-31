@@ -9,7 +9,7 @@ $vm_gui = false
 $rancher_ui_port = 8080
 
 $vm_name = "hence"
-$private_ip_subnet = "172.19.8"
+$private_ip_prefix = "172.19.8"
 $rancher_server = "rancher-server"
 
 # Enable port forwarding of Docker TCP socket
