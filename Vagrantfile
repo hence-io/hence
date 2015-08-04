@@ -107,10 +107,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             # Folder Mounting
             # --------------------------------------------------
             node.vm.synced_folder "./projects", "/vagrant-nfs/projects", type: "nfs", :nfs_version => "3", :mount_options => ["actimeo=2"]
-            config.bindfs.bind_folder "/vagrant-nfs/projects", "/hence/projects"
+            config.bindfs.bind_folder "/vagrant-nfs/projects", "/hence/projects", :owner => "vagrant", :group => "vagrant", :'create-as-user' => true, :perms => "u=rwx:g=rwx:o=rwx", :'create-with-perms' => "u=rwx:g=rwx:o=rwx", :'chown-ignore' => true, :'chgrp-ignore' => true, :'chmod-ignore' => true
 
             node.vm.synced_folder "./mount", "/vagrant-nfs/mount", type: "nfs", :nfs_version => "3", :mount_options => ["actimeo=2"]
-            config.bindfs.bind_folder "/vagrant-nfs/mount", "/hence/mount"
+            config.bindfs.bind_folder "/vagrant-nfs/mount", "/hence/mount", :owner => "vagrant", :group => "vagrant", :'create-as-user' => true, :perms => "u=rwx:g=rwx:o=rwx", :'create-with-perms' => "u=rwx:g=rwx:o=rwx", :'chown-ignore' => true, :'chgrp-ignore' => true, :'chmod-ignore' => true
 
             # Optionally, mount the User's home directory in the VM.  Defaults to false.
             if $share_home
