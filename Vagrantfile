@@ -133,6 +133,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             end
 
             config.vm.provision :shell, path: "./scripts/setup/prepare.sh", :privileged => true
+            # config.vm.provision :shell, path: "./scripts/setup/remove-swap.sh", :privileged => true
+            config.vm.provision :shell, path: "./scripts/setup/create-swap.sh", :privileged => true
 
             config.vm.provision "docker", :version => "1.7.1"
 
@@ -154,8 +156,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
                     d.run $rancher_server_image,
                         auto_assign_name: false,
                         daemonize: true,
-                        restart: 'always',
-                        args: "-p 8080:8080 --name rancher-server"
+                        args: "--restart=always -p 8080:8080 --name rancher-server"
                 end
             end
 
@@ -163,8 +164,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
                 d.run $rancher_agent_image,
                     auto_assign_name: false,
                     daemonize: false,
-                    restart: 'no',
-                    args: "-e CATTLE_AGENT_IP=#{node_ip} -e WAIT=true -v /var/run/docker.sock:/var/run/docker.sock --name rancher-agent-init",
+                    args: "--restart=no -e CATTLE_AGENT_IP=#{node_ip} -e WAIT=true -v /var/run/docker.sock:/var/run/docker.sock --name rancher-agent-init",
                     cmd: "http://#{server_ip}:8080"
             end
 
