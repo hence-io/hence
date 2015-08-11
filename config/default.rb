@@ -13,12 +13,21 @@ $private_ip_prefix = "172.19.8"
 $rancher_server = "rancher-server"
 
 # Enable port forwarding of Docker TCP socket
-$expose_docker_tcp=true
+$expose_docker_tcp = true
+
+# Gatling rsync latency.  This will prevent rsync from firing until <value> contiguous secons without file events have passed.
+# This will delay rsyncs from happening if many writes are happening on the host (during a make or a git clone, for example) until the activity has leveled off.
+$gatling_rsync_latency = 2
 
 # Enable NFS sharing of your home directory ($HOME) to CoreOS
 # It will be mounted at the same path in the VM as on the host.
 # Example: /Users/foobar -> /Users/foobar
-$share_home=false
+$share_home = false
+
+# Rsync folder options
+$rsync_mount_args = ["-rtlDPvc", "--delete"]
+$rsync_project_args = ["-rtlDPvc"]
+$rsync_exclude = [".git"]
 
 # Share additional folders to the CoreOS VMs
 # For example,

@@ -1,11 +1,12 @@
 VAGRANTFILE_API_VERSION = "2"
 Vagrant.require_version ">=1.7.2"
 
-unless Vagrant.has_plugin?("vagrant-bindfs")
-  raise 'vagrant-bindfs is not installed!  Please run `vagrant plugin install vagrant-bindfs`'
-end
 unless Vagrant.has_plugin?("vagrant-vbguest")
-  raise 'vagrant-vbguest is not installed!  Please run `vagrant plugin install vagrant-vbguest`'
+  puts 'Plugin vagrant-vbguest is not installed!  For ideal virtualbox performance, it is strongly recommended that you install it by running `vagrant plugin install vagrant-vbguest`.'
+end
+
+unless Vagrant.has_plugin?("vagrant-gatling-rsync")
+  puts 'Plugin vagrant-gatling-rsync is not installed!  For performance reasons, it is strongly recommended that you install it by running `vagrant plugin install vagrant-gatling-rsync`.'
 end
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
@@ -106,20 +107,29 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             # --------------------------------------------------
             # Folder Mounting
             # --------------------------------------------------
-            node.vm.synced_folder "./projects", "/vagrant-nfs/projects", type: "nfs", :nfs_version => "3", :mount_options => ["actimeo=2"]
-            config.bindfs.bind_folder "/vagrant-nfs/projects", "/hence/projects", :owner => "vagrant", :group => "vagrant", :'create-as-user' => true, :perms => "u=rwx:g=rwx:o=rwx", :'create-with-perms' => "u=rwx:g=rwx:o=rwx", :'chown-ignore' => true, :'chgrp-ignore' => true, :'chmod-ignore' => true
 
-            node.vm.synced_folder "./mount", "/vagrant-nfs/mount", type: "nfs", :nfs_version => "3", :mount_options => ["actimeo=2"]
-            config.bindfs.bind_folder "/vagrant-nfs/mount", "/hence/mount", :owner => "vagrant", :group => "vagrant", :'create-as-user' => true, :perms => "u=rwx:g=rwx:o=rwx", :'create-with-perms' => "u=rwx:g=rwx:o=rwx", :'chown-ignore' => true, :'chgrp-ignore' => true, :'chmod-ignore' => true
+            # Configure the window for gatling to coalesce writes.
+            if Vagrant.has_plugin?("vagrant-gatling-rsync")
+                config.gatling.latency = $gatling_rsync_latency
+                config.gatling.time_format = "%H:%M:%S"
+
+                # Automatically sync when machines with rsync folders come up.
+                config.gatling.rsync_on_startup = true
+            end
+
+
+            node.vm.synced_folder "./projects", "/hence/projects", id: "projects", type: "rsync", rsync__exclude: $rsync_exclude, rsync__args: $rsync_project_args
+
+            node.vm.synced_folder "./mount", "/hence/mount", id: "mount", type: "rsync", rsync__exclude: $rsync_exclude, rsync__args: $rsync_mount_args
 
             # Optionally, mount the User's home directory in the VM.  Defaults to false.
             if $share_home
-                node.vm.synced_folder ENV['HOME'], ENV['HOME'], id: "home", type: "rsync", rsync__exclude: ".git/", rsync__args: ["--verbose", "--archive", "--delete", "--copy-links"]
+                node.vm.synced_folder ENV['HOME'], ENV['HOME'], id: "home", type: "rsync", rsync__exclude: $rsync_exclude, rsync__args: $rsync_mount_args
             end
 
             # Optionally, mount arbitrary folders to the vm
             $shared_folders.each_with_index do |(host_folder, guest_folder), index|
-                node.vm.synced_folder host_folder.to_s, guest_folder.to_s, id: "rancher-share%02d" % index, type: "rsync", rsync__exclude: ".git/", rsync__args: ["--verbose", "--archive", "--delete", "--copy-links"]
+                node.vm.synced_folder host_folder.to_s, guest_folder.to_s, id: "rancher-share%02d" % index, type: "rsync", rsync__exclude: $rsync_exclude, rsync__args: $rsync_mount_args
             end
 
             # --------------------------------------------------
