@@ -114,7 +114,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
                 config.gatling.time_format = "%H:%M:%S"
 
                 # Automatically sync when machines with rsync folders come up.
-                config.gatling.rsync_on_startup = true
+                config.gatling.rsync_on_startup = $gatling_rsync_on_startup
             end
 
 

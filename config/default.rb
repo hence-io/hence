@@ -21,6 +21,7 @@ $expose_docker_tcp = true
 # Gatling rsync latency.  This will prevent rsync from firing until <value> contiguous secons without file events have passed.
 # This will delay rsyncs from happening if many writes are happening on the host (during a make or a git clone, for example) until the activity has leveled off.
 $gatling_rsync_latency = 2
+$gatling_rsync_on_startup = false
 
 # Enable NFS sharing of your home directory ($HOME) to CoreOS
 # It will be mounted at the same path in the VM as on the host.
