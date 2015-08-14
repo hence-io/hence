@@ -62,7 +62,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     # Disable synching current directory
     config.vm.synced_folder "./", "/vagrant", disabled: true
 
-    server_ip = "#{$private_ip_prefix}.100"
+    server_ip = "#{$private_ip_prefix}.#{$private_ip_end}"
 
     # Set up the nodes
     (1..$number_of_nodes).each do |i|
@@ -82,7 +82,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
             node.vm.hostname = hostname
 
-            node_ip = "#{$private_ip_prefix}.#{i+99}"
+            node_ip = "#{$private_ip_prefix}.#{i+($private_ip_end - 1)}"
             node.vm.network "private_network", ip: node_ip
             node.ssh.forward_agent = true
 
