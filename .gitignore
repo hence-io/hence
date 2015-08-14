@@ -11,6 +11,3 @@ mount/*
 
 provisioning/*
 !provisioning/README.md
-
-client
-hence-util
