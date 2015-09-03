@@ -1,36 +1,49 @@
 # Hence
-Provisioner for the Hence.io platform
+Vagrant provisioner for a Hence.io platform VM
 
-## Installation Instructions
-### Local requirements
+**NOTE:** This platform is intended to be installed and managed using our [Hence CLI](https://github.com/hence-io/cli) nodejs package. It is by far the easiest and quickest way to provision and manage a Hence VM. We recommend that you use it instead of installing manually from this repo.
+
+## Prerequisites
 * Vagrant 1.7.2+
 * Virtualbox 4.3.0+
-* Docker 1.7.0+  ( Optional, if you want to run docker commands against containers without SSH-ing into the vm node(s) )
 
-If you want to use Vagrant to run this on your laptop just clone the repo and to do `vagrant up` and then access port 8080 for the UI.
+## Recommended Vagrant Plugins
+* [vagrant-vbguest](https://github.com/dotless-de/vagrant-vbguest)
+* [vagrant-gatling-rsync](https://github.com/smerrill/vagrant-gatling-rsync)
+* [vagrant-hostsupdater](https://github.com/cogitatio/vagrant-hostsupdater)
 
-The UI and API are available on the exposed port `8080`.
+## What it provides
+A basic vagrant up and provision will provide:
 
-### Launching the VM
-Clone this repo and run
+_VM Host_
+* Ubuntu 14.04 OS
+* Docker 1.7.1 (with TCP forwarding to port 2375)
+
+
+_Rancher_ (Docker container management infrastructure.  [Homepage](http://rancher.com/rancher/) | [Docs](http://docs.rancher.com/))
+* Rancher Server instance
+* Rancher Agent instance
+* Rancher UI
+
+
+## Installation
+### CLI method (recommended)
+You can get started by running:
+
+`npm install -g hence-cli`
+
+It is highly recommended that you have a look at the [Quick Start Guide](https://github.com/hence-io/cli#quick-start-guide) and go through the entire process.
+
+### Manual method (if you must)
+You can start and provision a VM by cloning this repo and running:
 
 `vagrant up`
 
-### Using Rancher
+## Customization
+### CLI method (recommended)
+If you installed via the [Hence CLI](https://github.com/hence-io/cli), you will set the custom config commands upon installation.  Updates to config will be handled via the [Hence Machine](https://github.com/hence-io/cli/blob/master/docs/machine.md) interface.
 
-The hence project relies heavily on rancher for container/service scheduling and discovery
+### Manual method (again, if you must)
+You can override any of the config settings found in `config/default.rb` by creating a `config/custom.rb` file and override any defaults there.
 
-To learn more about using Rancher, please refer to the [Rancher Documentation](http://docs.rancher.com/).
-
-### Setting up Rancher Compose CLI
-#### OSX
-    rm /usr/local/bin/rancher-compose\
-    && curl -L https://github.com/rancher/rancher-compose/releases/download/v0.1.3/rancher-compose-darwin-amd64-v0.1.3.tar.gz\
-    | tar xzf - -C /usr/local/bin --strip-components 2\
-    && chmod +x /usr/local/bin/rancher-compose
-
-### Setting up Local Docker to version 1.7.1
-#### OSX
-    rm /usr/local/bin/docker\
-    && curl -L https://get.docker.com/builds/Darwin/x86_64/docker-1.7.1 > /usr/local/bin/docker\
-    && chmod +x /usr/local/bin/docker
+This is the preferred way (for manual installs), so that any future pulls of this repo will not overwrite your custom settings.
