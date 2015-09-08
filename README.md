@@ -4,10 +4,12 @@ Vagrant provisioner for a Hence.io platform VM
 **NOTE:** This platform is intended to be installed and managed using our [Hence CLI](https://github.com/hence-io/cli) nodejs package. It is by far the easiest and quickest way to provision and manage a Hence VM. We recommend that you use it instead of installing manually from this repo.
 
 ## Prerequisites
+
 * Vagrant 1.7.2+
 * Virtualbox 4.3.0+
 
 ## Recommended Vagrant Plugins
+
 * [vagrant-vbguest](https://github.com/dotless-de/vagrant-vbguest)
 * [vagrant-gatling-rsync](https://github.com/smerrill/vagrant-gatling-rsync)
 * [vagrant-hostsupdater](https://github.com/cogitatio/vagrant-hostsupdater)
@@ -16,11 +18,13 @@ Vagrant provisioner for a Hence.io platform VM
 A basic vagrant up and provision will provide:
 
 _VM Host_
+
 * Ubuntu 14.04 OS
 * Docker 1.7.1 (with TCP forwarding to port 2375)
 
 
 _Rancher_ (Docker container management infrastructure.  [Homepage](http://rancher.com/rancher/) | [Docs](http://docs.rancher.com/))
+
 * Rancher Server instance
 * Rancher Agent instance
 * Rancher UI
@@ -50,6 +54,7 @@ Your machine is now ready for use.  Below are a couple of important pointers reg
 
 #### Mounting your local files into the VM
 Now that you have a fully-functional VM set up, you're going to want to mount your project code from your Host OS (i.e. Mac OSx, Windows) into your VM so that it will be available to the docker containers that will be running it.  There are 2 folders set up in your VM installation location for this:
+
 1. projects: This is where you'll place (or symlink in) your project code.
 2. mount: This directory is for mounting any miscellaneous files/folders that you want in the VM, but don't really belong in the project directory.
 
@@ -75,10 +80,12 @@ NOTE: Due to performance reasons, we are using rsync to mount local files into t
 
 #### Further suggested reading
 The Hence.io framework relies heavily on docker containers for all it's project management. If you are unfamiliar with docker, you should start by reading up on at least the following concepts from the Docker Documentation.
+
 1. [About Docker](http://docs.docker.com/misc/)
 2. [Docker Compose](http://docs.docker.com/compose/)
 
 On top of Docker, the Hence.io framework uses rancher for docker container/service scheduling and discovery. Rancher, at it's most basic level, provides a UI for building 'Stacks', which are comprised of one or many docker containers that work together to deliver a fully-functioning application.  If you think of a LEMP stack, you might have the following containers working together:
+
 * MariaDb (or MySql)
 * PHP
 * Nginx (or Apache)
