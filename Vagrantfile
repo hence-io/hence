@@ -1,6 +1,10 @@
 VAGRANTFILE_API_VERSION = "2"
 Vagrant.require_version ">=1.7.2"
 
+unless Vagrant.has_plugin?("vagrant-bindfs")
+  raise 'vagrant-bindfs is not installed!  Please run `vagrant plugin install vagrant-bindfs`'
+end
+
 unless Vagrant.has_plugin?("vagrant-vbguest")
   puts 'Plugin vagrant-vbguest is not installed!  For ideal virtualbox performance, it is strongly recommended that you install it by running `vagrant plugin install vagrant-vbguest`.'
 end
@@ -120,7 +124,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
             node.vm.synced_folder "./projects", "/hence/projects", id: "projects", type: "rsync", rsync__exclude: $rsync_exclude, rsync__args: $rsync_project_args
 
-            node.vm.synced_folder "./mount", "/hence/mount", id: "mount", type: "rsync", rsync__exclude: $rsync_exclude, rsync__args: $rsync_mount_args
+            node.vm.synced_folder "./mount", "/vagrant-nfs/mount", id: "mount", type: "nfs", :nfs_version => "3", :mount_options => ["actimeo=2"]
+            config.bindfs.bind_folder "/vagrant-nfs/mount", "/hence/mount", :owner => "vagrant", :group => "vagrant", :'create-as-user' => true, :perms => "u=rwx:g=rwx:o=rwx", :'create-with-perms' => "u=rwx:g=rwx:o=rwx", :'chown-ignore' => true, :'chgrp-ignore' => true, :'chmod-ignore' => true
 
             # Optionally, mount the User's home directory in the VM.  Defaults to false.
             if $share_home
