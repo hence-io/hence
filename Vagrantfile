@@ -152,14 +152,15 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             # config.vm.provision :shell, path: "./scripts/setup/remove-swap.sh", :privileged => true
             config.vm.provision :shell, path: "./scripts/setup/create-swap.sh", :privileged => true
 
-            config.vm.provision "docker", :version => "1.7.1"
+            config.vm.provision :shell, path: "./scripts/setup/prepare-docker-install.sh", :privileged => true
+            config.vm.provision :shell, :inline => "[ -f /etc/default/docker.#{$docker_version}.installed ] || apt-get update && apt-get install -y docker-engine=#{$docker_version} && touch /etc/default/docker.#{$docker_version}.installed", :privileged => true
 
             config.vm.provision :shell, path: "./scripts/setup/configure-docker.sh", :privileged => true
 
             config.vm.provision :shell, path: "./scripts/setup/configure-folder-permissions.sh", :privileged => true
 
-            $rancher_server_image = "rancher/server:latest"
-            $rancher_agent_image = "rancher/agent:latest"
+            $rancher_server_image = "rancher/server:#{$rancher_server_version}"
+            $rancher_agent_image = "rancher/agent:#{$rancher_agent_version}"
 
             # Remove any crashed containers on provision
             $container_cleanup_starting = 'echo "INFO: Cleaning up any failed containers"'
