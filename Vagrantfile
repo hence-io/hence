@@ -121,11 +121,35 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
                 config.gatling.rsync_on_startup = $gatling_rsync_on_startup
             end
 
+            # Check for symlinks in the projects directory and fetch the realpath
+            projects = Array.new
 
-            node.vm.synced_folder "./projects", "/hence/projects", id: "projects", type: "rsync", rsync__exclude: $rsync_exclude, rsync__args: $rsync_project_args
+            Dir.foreach('./projects') do |item|
+                next if item == '.' or item == '..'
 
+                path = "./projects/#{item}"
+
+                if File.directory?( path )
+                    projects << {
+                        :path => File.symlink?( path ) ? Pathname.new(path).realpath.to_s : path,
+                        :name => item
+                    }
+                end
+            end
+
+            # Ensure nfs mounts get the appropriate gid/uid settings
+            config.nfs.map_uid = Process.uid
+            config.nfs.map_gid = Process.gid
+
+            # Mount each project
+            projects.each do |project|
+                node.vm.synced_folder "#{project[:path]}", "/vagrant-nfs/projects/#{project[:name]}", id: "projects_#{project[:name]}", type: "nfs", :nfs_version => "3", :mount_options => ["actimeo=2"]
+                config.bindfs.bind_folder "/vagrant-nfs/projects/#{project[:name]}", "/hence/projects/#{project[:name]}", :multithreaded => true, :'force-user' => "vagrant", :'force-group' => "vagrant", :'create-as-user' => true, :perms => "u=rwx:g=rwx:o=rx", :'create-with-perms' => "u=rwx:g=rwx:o=rx", :'chown-ignore' => true, :'chgrp-ignore' => true, :'chmod-ignore' => true
+            end
+
+            # Mount any extra data
             node.vm.synced_folder "./mount", "/vagrant-nfs/mount", id: "mount", type: "nfs", :nfs_version => "3", :mount_options => ["actimeo=2"]
-            config.bindfs.bind_folder "/vagrant-nfs/mount", "/hence/mount", :owner => "vagrant", :group => "vagrant", :'create-as-user' => true, :perms => "u=rwx:g=rwx:o=rwx", :'create-with-perms' => "u=rwx:g=rwx:o=rwx", :'chown-ignore' => true, :'chgrp-ignore' => true, :'chmod-ignore' => true
+            config.bindfs.bind_folder "/vagrant-nfs/mount", "/hence/mount", :multithreaded => true, :'force-user' => "vagrant", :'force-group' => "vagrant", :'create-as-user' => true, :perms => "u=rwx:g=rwx:o=rx", :'create-with-perms' => "u=rwx:g=rwx:o=rx", :'chown-ignore' => true, :'chgrp-ignore' => true, :'chmod-ignore' => true
 
             # Optionally, mount the User's home directory in the VM.  Defaults to false.
             if $share_home
