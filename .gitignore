@@ -3,11 +3,8 @@
 config/*
 !config/default.rb
 
-projects/*
-!projects/README.md
+mount/assets/*
+!mount/assets/README.md
 
-mount/*
-!mount/README.md
-
-provisioning/*
-!provisioning/README.md
+mount/projects/*
+!mount/projects/README.md

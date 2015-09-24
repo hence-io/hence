@@ -7,7 +7,7 @@ $vm_cpus = 2
 $vm_gui = false
 
 $rancher_ui_port = 8080
-$rancher_server_version = "v0.35.0"
+$rancher_server_version = "v0.38.0"
 $rancher_agent_version = "v0.8.2"
 
 $vm_name = "hence"
@@ -23,7 +23,7 @@ $docker_version = "1.8.2-0~trusty"
 
 # Gatling rsync latency.  This will prevent rsync from firing until <value> contiguous secons without file events have passed.
 # This will delay rsyncs from happening if many writes are happening on the host (during a make or a git clone, for example) until the activity has leveled off.
-$gatling_rsync_latency = 2
+$gatling_rsync_latency = 1
 $gatling_rsync_on_startup = false
 
 # Enable NFS sharing of your home directory ($HOME) to CoreOS

@@ -46,23 +46,6 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     config.vm.box = $vm_box || "ubuntu/trusty64"
     config.vm.box_version = $vm_box_version || "20150609.0.10"
 
-    if $vm_box == "rancherio/rancheros"
-        config.vm.box_version = ">=0.3.3"
-        require_relative 'vagrant_rancheros_guest_plugin.rb'
-
-        config.vm.provider :virtualbox do |v|
-            # On VirtualBox, we don't have guest additions or a functional vboxsf
-            # in RancherOS, so tell Vagrant that so it can be smarter.
-            v.check_guest_additions = false
-            v.functional_vboxsf     = false
-        end
-
-        # plugin conflict
-        if Vagrant.has_plugin?("vagrant-vbguest") then
-            config.vbguest.auto_update = false
-        end
-    end
-
     # Disable synching current directory
     config.vm.synced_folder "./", "/vagrant", disabled: true
 
@@ -121,35 +104,43 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
                 config.gatling.rsync_on_startup = $gatling_rsync_on_startup
             end
 
-            # Check for symlinks in the projects directory and fetch the realpath
-            projects = Array.new
-
-            Dir.foreach('./projects') do |item|
-                next if item == '.' or item == '..'
-
-                path = "./projects/#{item}"
-
-                if File.directory?( path )
-                    projects << {
-                        :path => File.symlink?( path ) ? Pathname.new(path).realpath.to_s : path,
-                        :name => item
-                    }
-                end
-            end
-
             # Ensure nfs mounts get the appropriate gid/uid settings
             config.nfs.map_uid = Process.uid
             config.nfs.map_gid = Process.gid
 
-            # Mount each project
-            projects.each do |project|
-                node.vm.synced_folder "#{project[:path]}", "/vagrant-nfs/projects/#{project[:name]}", id: "projects_#{project[:name]}", type: "nfs", :nfs_version => "3", :mount_options => ["actimeo=2"]
-                config.bindfs.bind_folder "/vagrant-nfs/projects/#{project[:name]}", "/hence/projects/#{project[:name]}", :multithreaded => true, :'force-user' => "vagrant", :'force-group' => "vagrant", :'create-as-user' => true, :perms => "u=rwx:g=rwx:o=rx", :'create-with-perms' => "u=rwx:g=rwx:o=rx", :'chown-ignore' => true, :'chgrp-ignore' => true, :'chmod-ignore' => true
+            def getRealpaths(folder)
+                items = Array.new
+
+                Dir.foreach(folder) do |item|
+                    next if item == '.' or item == '..'
+
+                    path = "#{folder}/#{item}"
+
+                    if File.directory?( path )
+                        items << {
+                            :path => File.symlink?( path ) ? Pathname.new(path).realpath.to_s : path,
+                            :name => item
+                        }
+                    end
+                end
+
+                return items
             end
 
-            # Mount any extra data
-            node.vm.synced_folder "./mount", "/vagrant-nfs/mount", id: "mount", type: "nfs", :nfs_version => "3", :mount_options => ["actimeo=2"]
-            config.bindfs.bind_folder "/vagrant-nfs/mount", "/hence/mount", :multithreaded => true, :'force-user' => "vagrant", :'force-group' => "vagrant", :'create-as-user' => true, :perms => "u=rwx:g=rwx:o=rx", :'create-with-perms' => "u=rwx:g=rwx:o=rx", :'chown-ignore' => true, :'chgrp-ignore' => true, :'chmod-ignore' => true
+            # Check for symlinks in the mount directories and fetch the realpath
+            projects = getRealpaths('./mount/projects')
+            assets = getRealpaths('./mount/assets')
+
+            # Mount each project
+            projects.each do |item|
+                node.vm.synced_folder "#{item[:path]}", "/hence/projects/#{item[:name]}", id: "projects_#{item[:name]}", type: "rsync", rsync__exclude: $rsync_exclude, rsync__args: $rsync_item_args
+            end
+
+            # Mount all assets
+            assets.each do |item|
+                node.vm.synced_folder "#{item[:path]}", "/vagrant-nfs/assets/#{item[:name]}", id: "assets_#{item[:name]}", type: "nfs", :nfs_version => "3", :mount_options => ["actimeo=2"]
+                config.bindfs.bind_folder "/vagrant-nfs/assets/#{item[:name]}", "/hence/assets/#{item[:name]}", :multithreaded => true, :'force-user' => "vagrant", :'force-group' => "vagrant", :'create-as-user' => true, :perms => "u=rwx:g=rwx:o=rx", :'create-with-perms' => "u=rwx:g=rwx:o=rx", :'chown-ignore' => true, :'chgrp-ignore' => true, :'chmod-ignore' => true
+            end
 
             # Optionally, mount the User's home directory in the VM.  Defaults to false.
             if $share_home
@@ -171,17 +162,16 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
                 s.inline = "sudo sed -i '/tty/!s/mesg n/tty -s \\&\\& mesg n/' /root/.profile"
             end
 
-            config.vm.provision :shell, path: "./scripts/setup/prepare.sh", :privileged => true
+            config.vm.provision :shell, path: "./provisioning/scripts/prepare.sh", :privileged => true
 
-            # config.vm.provision :shell, path: "./scripts/setup/remove-swap.sh", :privileged => true
-            config.vm.provision :shell, path: "./scripts/setup/create-swap.sh", :privileged => true
+            config.vm.provision :shell, path: "./provisioning/scripts/create-swap.sh", :privileged => true
 
-            config.vm.provision :shell, path: "./scripts/setup/prepare-docker-install.sh", :privileged => true
+            config.vm.provision :shell, path: "./provisioning/scripts/prepare-docker-install.sh", :privileged => true
             config.vm.provision :shell, :inline => "[ -f /etc/default/docker.#{$docker_version}.installed ] || apt-get update && apt-get install -y docker-engine=#{$docker_version} && touch /etc/default/docker.#{$docker_version}.installed", :privileged => true
 
-            config.vm.provision :shell, path: "./scripts/setup/configure-docker.sh", :privileged => true
+            config.vm.provision :shell, path: "./provisioning/scripts/configure-docker.sh", :privileged => true
 
-            config.vm.provision :shell, path: "./scripts/setup/configure-folder-permissions.sh", :privileged => true
+            config.vm.provision :shell, path: "./provisioning/scripts/configure-folder-permissions.sh", :privileged => true
 
             $rancher_server_image = "rancher/server:#{$rancher_server_version}"
             $rancher_agent_image = "rancher/agent:#{$rancher_agent_version}"
@@ -212,7 +202,6 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             end
 
             config.vm.provision :shell, :inline => "docker logs -f --since #{$provision_timestamp} rancher-agent-init", :privileged => true
-            config.vm.provision :shell, :inline => "docker logs -f --since #{$provision_timestamp} rancher-agent", :privileged => true
         end
     end
 end
