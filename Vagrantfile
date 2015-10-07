@@ -139,7 +139,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             # Mount all assets
             assets.each do |item|
                 node.vm.synced_folder "#{item[:path]}", "/vagrant-nfs/assets/#{item[:name]}", id: "assets_#{item[:name]}", type: "nfs", :nfs_version => "3", :mount_options => ["actimeo=2"]
-                config.bindfs.bind_folder "/vagrant-nfs/assets/#{item[:name]}", "/hence/assets/#{item[:name]}", :multithreaded => true, :'force-user' => "vagrant", :'force-group' => "vagrant", :'create-as-user' => true, :perms => "u=rwx:g=rwx:o=rx", :'create-with-perms' => "u=rwx:g=rwx:o=rx", :'chown-ignore' => true, :'chgrp-ignore' => true, :'chmod-ignore' => true
+                config.bindfs.bind_folder "/vagrant-nfs/assets/#{item[:name]}", "/hence/assets/#{item[:name]}", :o => "nonempty", :multithreaded => true, :'force-user' => "vagrant", :'force-group' => "vagrant", :'create-as-user' => true, :perms => "u=rwx:g=rwx:o=rx", :'create-with-perms' => "u=rwx:g=rwx:o=rx", :'chown-ignore' => true, :'chgrp-ignore' => true, :'chmod-ignore' => true
             end
 
             # Optionally, mount the User's home directory in the VM.  Defaults to false.
