@@ -112,7 +112,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
                 items = Array.new
 
                 Dir.foreach(folder) do |item|
-                    next if item == '.' or item == '..'
+                    next if item == '.' or item == '..' or item.end_with?('.disabled')
 
                     path = "#{folder}/#{item}"
 
