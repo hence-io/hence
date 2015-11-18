@@ -7,7 +7,7 @@ $vm_cpus = 2
 $vm_gui = false
 
 $rancher_ui_port = 8080
-$rancher_server_version = "v0.42.0"
+$rancher_server_version = "v0.46.0"
 $rancher_agent_version = "v0.8.2"
 
 $vm_name = "hence"
@@ -19,7 +19,7 @@ $rancher_server = "rancher-server"
 
 # Enable port forwarding of Docker TCP socket
 $expose_docker_tcp = true
-$docker_version = "1.8.2-0~trusty"
+$docker_version = "1.9.0-0~trusty"
 
 # Gatling rsync latency.  This will prevent rsync from firing until <value> contiguous secons without file events have passed.
 # This will delay rsyncs from happening if many writes are happening on the host (during a make or a git clone, for example) until the activity has leveled off.
@@ -33,7 +33,7 @@ $share_home = false
 
 # Rsync folder options
 $rsync_mount_args = ["-rtlDPvc", "--delete"]
-$rsync_project_args = ["-rtlDPvc"]
+$rsync_project_args = ["-rtlDPvc", "--safe-links"]
 $rsync_exclude = [".git"]
 
 # Share additional folders to the CoreOS VMs

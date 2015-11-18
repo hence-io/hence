@@ -133,7 +133,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
             # Mount each project
             projects.each do |item|
-                node.vm.synced_folder "#{item[:path]}", "/hence/projects/#{item[:name]}", id: "projects_#{item[:name]}", type: "rsync", rsync__exclude: $rsync_exclude, rsync__args: $rsync_item_args
+                node.vm.synced_folder "#{item[:path]}", "/hence/projects/#{item[:name]}", id: "projects_#{item[:name]}", type: "rsync", rsync__exclude: $rsync_exclude, rsync__args: $rsync_project_args
             end
 
             # Mount all assets
