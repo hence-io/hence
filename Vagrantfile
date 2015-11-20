@@ -14,6 +14,7 @@ unless Vagrant.has_plugin?("vagrant-gatling-rsync")
 end
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+    require 'yaml'
 
     $provision_timestamp = Time.now.to_i
 
@@ -108,7 +109,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             config.nfs.map_uid = Process.uid
             config.nfs.map_gid = Process.gid
 
-            def getRealpaths(folder)
+            def getProjects(folder)
                 items = Array.new
 
                 Dir.foreach(folder) do |item|
@@ -117,9 +118,20 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
                     path = "#{folder}/#{item}"
 
                     if File.directory?( path )
+                        $hence_file = File.join(path, "hence.yml")
+
+                        if File.exist?($hence_file)
+                            $hence_config = YAML.load_file($hence_file)
+                        else
+                            puts "No hence.yml file was found in the #{path} directory, and so no folders will be mounted"
+                            next
+                        end
+
                         items << {
                             :path => File.symlink?( path ) ? Pathname.new(path).realpath.to_s : path,
-                            :name => item
+                            :name => $hence_config['machine_name'],
+                            :rsync => $hence_config['mount']['rsync'],
+                            :nfs => $hence_config['mount']['nfs'],
                         }
                     end
                 end
@@ -128,18 +140,18 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             end
 
             # Check for symlinks in the mount directories and fetch the realpath
-            projects = getRealpaths('./mount/projects')
-            assets = getRealpaths('./mount/assets')
+            projects = getProjects('./mount/projects')
 
             # Mount each project
-            projects.each do |item|
-                node.vm.synced_folder "#{item[:path]}", "/hence/projects/#{item[:name]}", id: "projects_#{item[:name]}", type: "rsync", rsync__exclude: $rsync_exclude, rsync__args: $rsync_project_args
-            end
+            projects.each do |project|
+                project[:rsync].each do |folder|
+                    node.vm.synced_folder File.join(project[:path], folder), "/hence/#{project[:name]}/#{folder}", id: "rsync_#{project[:name]}_#{folder}", type: "rsync", rsync__exclude: $rsync_exclude, rsync__args: $rsync_project_args
+                end
 
-            # Mount all assets
-            assets.each do |item|
-                node.vm.synced_folder "#{item[:path]}", "/vagrant-nfs/assets/#{item[:name]}", id: "assets_#{item[:name]}", type: "nfs", :nfs_version => "3", :mount_options => ["actimeo=2"]
-                config.bindfs.bind_folder "/vagrant-nfs/assets/#{item[:name]}", "/hence/assets/#{item[:name]}", :o => "nonempty", :multithreaded => true, :'force-user' => "vagrant", :'force-group' => "vagrant", :'create-as-user' => true, :perms => "u=rwx:g=rwx:o=rx", :'create-with-perms' => "u=rwx:g=rwx:o=rx", :'chown-ignore' => true, :'chgrp-ignore' => true, :'chmod-ignore' => true
+                project[:nfs].each do |folder|
+                    node.vm.synced_folder File.join(project[:path], folder), "/vagrant-nfs/#{project[:name]}/#{folder}", id: "nfs_#{project[:name]}/#{folder}", type: "nfs", :nfs_version => "3", :mount_options => ["actimeo=2"]
+                    config.bindfs.bind_folder "/vagrant-nfs/#{project[:name]}/#{folder}", "/hence/#{project[:name]}/#{folder}", :o => "nonempty", :multithreaded => true, :'force-user' => "vagrant", :'force-group' => "vagrant", :'create-as-user' => true, :perms => "u=rwx:g=rwx:o=rx", :'create-with-perms' => "u=rwx:g=rwx:o=rx", :'chown-ignore' => true, :'chgrp-ignore' => true, :'chmod-ignore' => true
+                end
             end
 
             # Optionally, mount the User's home directory in the VM.  Defaults to false.
