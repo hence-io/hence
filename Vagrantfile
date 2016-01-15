@@ -132,6 +132,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
                             :name => $hence_config['machine_name'],
                             :rsync => $hence_config['mount']['rsync'],
                             :nfs => $hence_config['mount']['nfs'],
+                            :options => $hence_config['vm_options']
                         }
                     end
                 end
@@ -144,8 +145,16 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
             # Mount each project
             projects.each do |project|
+                project[:options].each do |option|
+                    instance_variable_set("@#{option['name']}", option['value'])
+                end
+
                 project[:rsync].each do |folder|
-                    node.vm.synced_folder File.join(project[:path], folder), "/hence/#{project[:name]}/#{folder}", id: "rsync_#{project[:name]}_#{folder}", type: "rsync", rsync__exclude: $rsync_exclude, rsync__args: $rsync_project_args
+                    $custom_exclude = instance_variable_get("@rsync_exclude");
+                    $exclude = (!$custom_exclude.nil? && !$custom_exclude.empty?) ? $custom_exclude : $rsync_exclude
+                    $destination_folder = (folder == '.') ? 'code': folder
+                    $source_folder = (folder == '.') ? project[:path] : File.join(project[:path], folder)
+                    node.vm.synced_folder $source_folder, "/hence/#{project[:name]}/#{$destination_folder}", id: "rsync_#{project[:name]}_#{$destination_folder}", type: "rsync", rsync__exclude: $exclude, rsync__args: $rsync_project_args
                 end
 
                 project[:nfs].each do |folder|
