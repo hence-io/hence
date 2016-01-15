@@ -132,7 +132,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
                             :name => $hence_config['machine_name'],
                             :rsync => $hence_config['mount']['rsync'],
                             :nfs => $hence_config['mount']['nfs'],
-                            :options => $hence_config['vm_options']
+                            :options => $hence_config['vm_options'].nil? ? [] : $hence_config['vm_options']
                         }
                     end
                 end
