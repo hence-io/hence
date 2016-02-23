@@ -7,7 +7,7 @@ $vm_cpus = 2
 $vm_gui = false
 
 $rancher_ui_port = 8080
-$rancher_server_version = "v0.59.0"
+$rancher_server_version = "v0.59.1"
 $rancher_agent_version = "v0.9.2"
 
 $vm_name = "hence"
@@ -45,3 +45,6 @@ $shared_folders = {}
 
 # Enable port forwarding from guest(s) to host machine, syntax is: { 80 => 8080 }, auto correction is enabled by default.
 $forwarded_ports = {}
+
+# Whether or not to mount to all nodes in a multinode setup
+$mount_folders_on_all_nodes = false

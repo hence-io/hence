@@ -95,82 +95,84 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             # --------------------------------------------------
             # Folder Mounting
             # --------------------------------------------------
+            if is_base_host or $mount_folders_on_all_nodes then
 
-            # Configure the window for gatling to coalesce writes.
-            if Vagrant.has_plugin?("vagrant-gatling-rsync")
-                config.gatling.latency = $gatling_rsync_latency
-                config.gatling.time_format = "%H:%M:%S"
+                # Configure the window for gatling to coalesce writes.
+                if Vagrant.has_plugin?("vagrant-gatling-rsync")
+                    config.gatling.latency = $gatling_rsync_latency
+                    config.gatling.time_format = "%H:%M:%S"
 
-                # Automatically sync when machines with rsync folders come up.
-                config.gatling.rsync_on_startup = $gatling_rsync_on_startup
-            end
+                    # Automatically sync when machines with rsync folders come up.
+                    config.gatling.rsync_on_startup = $gatling_rsync_on_startup
+                end
 
-            # Ensure nfs mounts get the appropriate gid/uid settings
-            config.nfs.map_uid = Process.uid
-            config.nfs.map_gid = Process.gid
+                # Ensure nfs mounts get the appropriate gid/uid settings
+                config.nfs.map_uid = Process.uid
+                config.nfs.map_gid = Process.gid
 
-            def getProjects(folder)
-                items = Array.new
+                def getProjects(folder)
+                    items = Array.new
 
-                Dir.foreach(folder) do |item|
-                    next if item == '.' or item == '..' or item.end_with?('.disabled')
+                    Dir.foreach(folder) do |item|
+                        next if item == '.' or item == '..' or item.end_with?('.disabled')
 
-                    path = "#{folder}/#{item}"
+                        path = "#{folder}/#{item}"
 
-                    if File.directory?( path )
-                        $hence_file = File.join(path, "hence.yml")
+                        if File.directory?( path )
+                            $hence_file = File.join(path, "hence.yml")
 
-                        if File.exist?($hence_file)
-                            $hence_config = YAML.load_file($hence_file)
-                        else
-                            puts "No hence.yml file was found in the #{path} directory, and so no folders will be mounted"
-                            next
+                            if File.exist?($hence_file)
+                                $hence_config = YAML.load_file($hence_file)
+                            else
+                                puts "No hence.yml file was found in the #{path} directory, and so no folders will be mounted"
+                                next
+                            end
+
+                            items << {
+                                :path => File.symlink?( path ) ? Pathname.new(path).realpath.to_s : path,
+                                :name => $hence_config['machine_name'],
+                                :rsync => $hence_config['mount']['rsync'],
+                                :nfs => $hence_config['mount']['nfs'],
+                                :options => $hence_config['vm_options'].nil? ? [] : $hence_config['vm_options']
+                            }
                         end
+                    end
 
-                        items << {
-                            :path => File.symlink?( path ) ? Pathname.new(path).realpath.to_s : path,
-                            :name => $hence_config['machine_name'],
-                            :rsync => $hence_config['mount']['rsync'],
-                            :nfs => $hence_config['mount']['nfs'],
-                            :options => $hence_config['vm_options'].nil? ? [] : $hence_config['vm_options']
-                        }
+                    return items
+                end
+
+                # Check for symlinks in the mount directories and fetch the realpath
+                projects = getProjects('./mount/projects')
+
+                # Mount each project
+                projects.each do |project|
+                    project[:options].each do |option|
+                        instance_variable_set("@#{option['name']}", option['value'])
+                    end
+
+                    project[:rsync].each do |folder|
+                        $custom_exclude = instance_variable_get("@rsync_exclude");
+                        $exclude = (!$custom_exclude.nil? && !$custom_exclude.empty?) ? $custom_exclude : $rsync_exclude
+                        $destination_folder = (folder == '.') ? 'code': folder
+                        $source_folder = (folder == '.') ? project[:path] : File.join(project[:path], folder)
+                        node.vm.synced_folder $source_folder, "/hence/#{project[:name]}/#{$destination_folder}", id: "rsync_#{project[:name]}_#{$destination_folder}", type: "rsync", rsync__exclude: $exclude, rsync__args: $rsync_project_args
+                    end
+
+                    project[:nfs].each do |folder|
+                        node.vm.synced_folder File.join(project[:path], folder), "/vagrant-nfs/#{project[:name]}/#{folder}", id: "nfs_#{project[:name]}/#{folder}", type: "nfs", :nfs_version => "3", :mount_options => ["actimeo=2"]
+                        config.bindfs.bind_folder "/vagrant-nfs/#{project[:name]}/#{folder}", "/hence/#{project[:name]}/#{folder}", :o => "nonempty", :multithreaded => true, :'force-user' => "vagrant", :'force-group' => "vagrant", :'create-as-user' => true, :perms => "u=rwx:g=rwx:o=rx", :'create-with-perms' => "u=rwx:g=rwx:o=rx", :'chown-ignore' => true, :'chgrp-ignore' => true, :'chmod-ignore' => true
                     end
                 end
 
-                return items
-            end
-
-            # Check for symlinks in the mount directories and fetch the realpath
-            projects = getProjects('./mount/projects')
-
-            # Mount each project
-            projects.each do |project|
-                project[:options].each do |option|
-                    instance_variable_set("@#{option['name']}", option['value'])
+                # Optionally, mount the User's home directory in the VM.  Defaults to false.
+                if $share_home
+                    node.vm.synced_folder ENV['HOME'], ENV['HOME'], id: "home", type: "rsync", rsync__exclude: $rsync_exclude, rsync__args: $rsync_mount_args
                 end
 
-                project[:rsync].each do |folder|
-                    $custom_exclude = instance_variable_get("@rsync_exclude");
-                    $exclude = (!$custom_exclude.nil? && !$custom_exclude.empty?) ? $custom_exclude : $rsync_exclude
-                    $destination_folder = (folder == '.') ? 'code': folder
-                    $source_folder = (folder == '.') ? project[:path] : File.join(project[:path], folder)
-                    node.vm.synced_folder $source_folder, "/hence/#{project[:name]}/#{$destination_folder}", id: "rsync_#{project[:name]}_#{$destination_folder}", type: "rsync", rsync__exclude: $exclude, rsync__args: $rsync_project_args
+                # Optionally, mount arbitrary folders to the vm
+                $shared_folders.each_with_index do |(host_folder, guest_folder), index|
+                    node.vm.synced_folder host_folder.to_s, guest_folder.to_s, id: "rancher-share%02d" % index, type: "rsync", rsync__exclude: $rsync_exclude, rsync__args: $rsync_mount_args
                 end
-
-                project[:nfs].each do |folder|
-                    node.vm.synced_folder File.join(project[:path], folder), "/vagrant-nfs/#{project[:name]}/#{folder}", id: "nfs_#{project[:name]}/#{folder}", type: "nfs", :nfs_version => "3", :mount_options => ["actimeo=2"]
-                    config.bindfs.bind_folder "/vagrant-nfs/#{project[:name]}/#{folder}", "/hence/#{project[:name]}/#{folder}", :o => "nonempty", :multithreaded => true, :'force-user' => "vagrant", :'force-group' => "vagrant", :'create-as-user' => true, :perms => "u=rwx:g=rwx:o=rx", :'create-with-perms' => "u=rwx:g=rwx:o=rx", :'chown-ignore' => true, :'chgrp-ignore' => true, :'chmod-ignore' => true
-                end
-            end
-
-            # Optionally, mount the User's home directory in the VM.  Defaults to false.
-            if $share_home
-                node.vm.synced_folder ENV['HOME'], ENV['HOME'], id: "home", type: "rsync", rsync__exclude: $rsync_exclude, rsync__args: $rsync_mount_args
-            end
-
-            # Optionally, mount arbitrary folders to the vm
-            $shared_folders.each_with_index do |(host_folder, guest_folder), index|
-                node.vm.synced_folder host_folder.to_s, guest_folder.to_s, id: "rancher-share%02d" % index, type: "rsync", rsync__exclude: $rsync_exclude, rsync__args: $rsync_mount_args
             end
 
             # --------------------------------------------------
@@ -188,7 +190,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             config.vm.provision :shell, path: "./provisioning/scripts/create-swap.sh", :privileged => true
 
             config.vm.provision :shell, path: "./provisioning/scripts/prepare-docker-install.sh", :privileged => true
-            config.vm.provision :shell, :inline => "[ -f /etc/default/docker.#{$docker_version}.installed ] || apt-get update && apt-get install -y docker-engine=#{$docker_version} && touch /etc/default/docker.#{$docker_version}.installed", :privileged => true
+
+            config.vm.provision :shell, path: "./provisioning/scripts/install-docker.sh", :args => "#{$docker_version}", :privileged => true
 
             config.vm.provision :shell, path: "./provisioning/scripts/configure-docker.sh", :privileged => true
 
