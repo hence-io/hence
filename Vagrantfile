@@ -58,6 +58,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         hostname = is_base_host ? $vm_name : "#{$vm_name}-%01d" % i
 
         config.vm.define hostname do |node|
+
             node.vm.provider :virtualbox do |v|
                 v.name = hostname
                 v.memory = $vm_memory || 2048
@@ -99,16 +100,16 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
                 # Configure the window for gatling to coalesce writes.
                 if Vagrant.has_plugin?("vagrant-gatling-rsync")
-                    config.gatling.latency = $gatling_rsync_latency
-                    config.gatling.time_format = "%H:%M:%S"
+                    node.gatling.latency = $gatling_rsync_latency
+                    node.gatling.time_format = "%H:%M:%S"
 
                     # Automatically sync when machines with rsync folders come up.
-                    config.gatling.rsync_on_startup = $gatling_rsync_on_startup
+                    node.gatling.rsync_on_startup = $gatling_rsync_on_startup
                 end
 
                 # Ensure nfs mounts get the appropriate gid/uid settings
-                config.nfs.map_uid = Process.uid
-                config.nfs.map_gid = Process.gid
+                node.nfs.map_uid = Process.uid
+                node.nfs.map_gid = Process.gid
 
                 def getProjects(folder)
                     items = Array.new
@@ -160,7 +161,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
                     project[:nfs].each do |folder|
                         node.vm.synced_folder File.join(project[:path], folder), "/vagrant-nfs/#{project[:name]}/#{folder}", id: "nfs_#{project[:name]}/#{folder}", type: "nfs", :nfs_version => "3", :mount_options => ["actimeo=2"]
-                        config.bindfs.bind_folder "/vagrant-nfs/#{project[:name]}/#{folder}", "/hence/#{project[:name]}/#{folder}", :o => "nonempty", :multithreaded => true, :'force-user' => "vagrant", :'force-group' => "vagrant", :'create-as-user' => true, :perms => "u=rwx:g=rwx:o=rx", :'create-with-perms' => "u=rwx:g=rwx:o=rx", :'chown-ignore' => true, :'chgrp-ignore' => true, :'chmod-ignore' => true
+                        node.bindfs.bind_folder "/vagrant-nfs/#{project[:name]}/#{folder}", "/hence/#{project[:name]}/#{folder}", :o => "nonempty", :multithreaded => true, :'force-user' => "vagrant", :'force-group' => "vagrant", :'create-as-user' => true, :perms => "u=rwx:g=rwx:o=rx", :'create-with-perms' => "u=rwx:g=rwx:o=rx", :'chown-ignore' => true, :'chgrp-ignore' => true, :'chmod-ignore' => true
                     end
                 end
 
@@ -180,22 +181,22 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             # --------------------------------------------------
 
             # Fix for tty warnings while provisioning ubuntu. See: http://foo-o-rama.com/vagrant--stdin-is-not-a-tty--fix.html
-            config.vm.provision "fix-no-tty", type: "shell" do |s|
+            node.vm.provision "fix-no-tty", type: "shell" do |s|
                 s.privileged = false
                 s.inline = "sudo sed -i '/tty/!s/mesg n/tty -s \\&\\& mesg n/' /root/.profile"
             end
 
-            config.vm.provision :shell, path: "./provisioning/scripts/prepare.sh", :privileged => true
+            node.vm.provision :shell, path: "./provisioning/scripts/prepare.sh", :privileged => true
 
-            config.vm.provision :shell, path: "./provisioning/scripts/create-swap.sh", :privileged => true
+            node.vm.provision :shell, path: "./provisioning/scripts/create-swap.sh", :privileged => true
 
-            config.vm.provision :shell, path: "./provisioning/scripts/prepare-docker-install.sh", :privileged => true
+            node.vm.provision :shell, path: "./provisioning/scripts/prepare-docker-install.sh", :privileged => true
 
-            config.vm.provision :shell, path: "./provisioning/scripts/install-docker.sh", :args => "#{$docker_version}", :privileged => true
+            node.vm.provision :shell, path: "./provisioning/scripts/install-docker.sh", :args => "#{$docker_version}", :privileged => true
 
-            config.vm.provision :shell, path: "./provisioning/scripts/configure-docker.sh", :privileged => true
+            node.vm.provision :shell, path: "./provisioning/scripts/configure-docker.sh", :privileged => true
 
-            config.vm.provision :shell, path: "./provisioning/scripts/configure-folder-permissions.sh", :privileged => true
+            node.vm.provision :shell, path: "./provisioning/scripts/configure-folder-permissions.sh", :privileged => true
 
             $rancher_server_image = "rancher/server:#{$rancher_server_version}"
             $rancher_agent_image = "rancher/agent:#{$rancher_agent_version}"
@@ -204,10 +205,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             $container_cleanup_starting = 'echo "INFO: Cleaning up any failed containers"'
             $container_cleanup_success = 'echo "INFO: Cleanup complete"'
             $container_cleanup_script = "#{$container_cleanup_starting} && crashed=`docker ps -aq -f exited=1`; [ -z \"$crashed\" ] || docker rm -f $crashed; #{$container_cleanup_success}"
-            config.vm.provision :shell, :inline => $container_cleanup_script, :privileged => true
+            node.vm.provision :shell, :inline => $container_cleanup_script, :privileged => true
 
             if is_base_host then
-                config.vm.provision "docker" do |d|
+                node.vm.provision "docker" do |d|
                     d.run $rancher_server_image,
                         auto_assign_name: false,
                         daemonize: true,
@@ -216,7 +217,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
                 end
             end
 
-            config.vm.provision "docker" do |d|
+            node.vm.provision "docker" do |d|
                 d.run $rancher_agent_image,
                     auto_assign_name: false,
                     daemonize: false,
@@ -225,7 +226,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
                     cmd: "http://#{server_ip}:8080"
             end
 
-            config.vm.provision :shell, :inline => "docker logs -f --since #{$provision_timestamp} rancher-agent-init", :privileged => true
+            node.vm.provision :shell, :inline => "docker logs -f --since #{$provision_timestamp} rancher-agent-init", :privileged => true
         end
     end
 end
