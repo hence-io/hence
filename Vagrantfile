@@ -180,32 +180,20 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             # Node Provisioning
             # --------------------------------------------------
 
-            # Fix for tty warnings while provisioning ubuntu. See: http://foo-o-rama.com/vagrant--stdin-is-not-a-tty--fix.html
-            node.vm.provision "fix-no-tty", type: "shell" do |s|
-                s.privileged = false
-                s.inline = "sudo sed -i '/tty/!s/mesg n/tty -s \\&\\& mesg n/' /root/.profile"
-            end
+            # System Provisioners
+            node.vm.provision :shell, path: "./provisioning/scripts/system/tty.sh", :privileged => false
+            node.vm.provision :shell, path: "./provisioning/scripts/system/permissions.sh", :privileged => true
+            node.vm.provision :shell, path: "./provisioning/scripts/system/swap.sh", :privileged => true
 
-            node.vm.provision :shell, path: "./provisioning/scripts/prepare.sh", :privileged => true
+            # Docker Provisioners
+            node.vm.provision :shell, path: "./provisioning/scripts/docker/prepare.sh", :privileged => true
+            node.vm.provision :shell, path: "./provisioning/scripts/docker/install.sh", :args => "#{$docker_version}", :privileged => true
+            node.vm.provision :shell, path: "./provisioning/scripts/docker/configure.sh", :privileged => true
+            node.vm.provision :shell, path: "./provisioning/scripts/docker/cleanup.sh", :privileged => true
 
-            node.vm.provision :shell, path: "./provisioning/scripts/create-swap.sh", :privileged => true
-
-            node.vm.provision :shell, path: "./provisioning/scripts/prepare-docker-install.sh", :privileged => true
-
-            node.vm.provision :shell, path: "./provisioning/scripts/install-docker.sh", :args => "#{$docker_version}", :privileged => true
-
-            node.vm.provision :shell, path: "./provisioning/scripts/configure-docker.sh", :privileged => true
-
-            node.vm.provision :shell, path: "./provisioning/scripts/configure-folder-permissions.sh", :privileged => true
-
+            # Rancher Provisioners
             $rancher_server_image = "rancher/server:#{$rancher_server_version}"
             $rancher_agent_image = "rancher/agent:#{$rancher_agent_version}"
-
-            # Remove any crashed containers on provision
-            $container_cleanup_starting = 'echo "INFO: Cleaning up any failed containers"'
-            $container_cleanup_success = 'echo "INFO: Cleanup complete"'
-            $container_cleanup_script = "#{$container_cleanup_starting} && crashed=`docker ps -aq -f exited=1`; [ -z \"$crashed\" ] || docker rm -f $crashed; #{$container_cleanup_success}"
-            node.vm.provision :shell, :inline => $container_cleanup_script, :privileged => true
 
             if is_base_host then
                 node.vm.provision "docker" do |d|
@@ -226,7 +214,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
                     cmd: "http://#{server_ip}:8080"
             end
 
-            node.vm.provision :shell, :inline => "docker logs -f --since #{$provision_timestamp} rancher-agent-init", :privileged => true
+            node.vm.provision :shell, path: "./provisioning/scripts/rancher/logs.sh", :args => "#{$provision_timestamp}", :privileged => true
         end
     end
 end

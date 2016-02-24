@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [ -z "$(which docker)" ]
+then
+    apt-get update -qqy
+fi
+
 if [ ! -f /etc/default/docker.install.prepared ]
 then
   # Re-installing docker-engine from the new repo will require any existing vm's to re-forward the tcp
