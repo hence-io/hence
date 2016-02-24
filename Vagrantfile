@@ -57,7 +57,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         is_base_host = (i == 1)
         hostname = is_base_host ? $vm_name : "#{$vm_name}-%01d" % i
 
-        config.vm.define hostname do |node|
+        config.vm.define hostname, primary: is_base_host do |node|
 
             node.vm.provider :virtualbox do |v|
                 v.name = hostname
