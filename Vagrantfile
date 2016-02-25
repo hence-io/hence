@@ -194,6 +194,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             # Rancher Provisioners
             $rancher_server_image = "rancher/server:#{$rancher_server_version}"
             $rancher_agent_image = "rancher/agent:#{$rancher_agent_version}"
+            $rancher_host_labels = is_base_host ? "io.hence.master=true&io.hence.hostname=#{hostname}" : "io.hence.hostname=#{hostname}"
 
             if is_base_host then
                 node.vm.provision "docker" do |d|
@@ -210,7 +211,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
                     auto_assign_name: false,
                     daemonize: false,
                     restart: 'no',
-                    args: "-e CATTLE_AGENT_IP=#{node_ip} -e WAIT=true -v /var/run/docker.sock:/var/run/docker.sock --name rancher-agent-init",
+                    args: "-e CATTLE_AGENT_IP=#{node_ip} -e CATTLE_HOST_LABELS='#{$rancher_host_labels}' -e WAIT=true -v /var/run/docker.sock:/var/run/docker.sock --name rancher-agent-init",
                     cmd: "http://#{server_ip}:8080"
             end
 
