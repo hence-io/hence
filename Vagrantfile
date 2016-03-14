@@ -184,6 +184,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             node.vm.provision :shell, path: "./provisioning/scripts/system/tty.sh", :privileged => false
             node.vm.provision :shell, path: "./provisioning/scripts/system/permissions.sh", :privileged => true
             node.vm.provision :shell, path: "./provisioning/scripts/system/swap.sh", :privileged => true
+            node.vm.provision :shell, path: "./provisioning/scripts/system/packages.sh", :privileged => true
 
             # Docker Provisioners
             node.vm.provision :shell, path: "./provisioning/scripts/docker/prepare.sh", :privileged => true
