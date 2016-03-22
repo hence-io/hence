@@ -7,8 +7,8 @@ $vm_cpus = 2
 $vm_gui = false
 
 $rancher_ui_port = 8080
-$rancher_server_version = "v0.63.1"
-$rancher_agent_version = "v0.10.0"
+$rancher_server_version = "v1.0.0-rc1"
+$rancher_agent_version = "v0.11.0"
 
 $vm_name = "hence"
 
@@ -19,7 +19,7 @@ $rancher_server = "rancher-server"
 
 # Enable port forwarding of Docker TCP socket
 $expose_docker_tcp = true
-$docker_version = "1.9.1-0~trusty"
+$docker_version = "1.10.3-0~trusty"
 
 # Gatling rsync latency.  This will prevent rsync from firing until <value> contiguous secons without file events have passed.
 # This will delay rsyncs from happening if many writes are happening on the host (during a make or a git clone, for example) until the activity has leveled off.
