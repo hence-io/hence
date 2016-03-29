@@ -7,7 +7,7 @@ $vm_cpus = 2
 $vm_gui = false
 
 $rancher_ui_port = 8080
-$rancher_server_version = "v1.0.0-rc1"
+$rancher_server_version = "v1.0.0"
 $rancher_agent_version = "v0.11.0"
 
 $vm_name = "hence"
